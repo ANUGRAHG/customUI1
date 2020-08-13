@@ -1,0 +1,81 @@
+_schema-version: "3.2"
+ID: cicdapp
+version: 0.0.1
+modules:
+- name: cicdapp-destination-content
+  type: com.sap.application.content
+  requires:
+  - name: uaa_cicdapp
+    parameters:
+      service-key:
+        name: uaa_cicdapp-key
+  - name: cicdapp_html_repo_host
+    parameters:
+      service-key:
+        name: cicdapp_html_repo_host-key
+  - name: cicdapp-destination-service
+    parameters:
+      content-target: true
+  parameters:
+    content:
+      subaccount:
+        destinations:
+        - Name: cicdapp_cicdapp_html_repo_host
+          ServiceInstanceName: cicdapp-html5-app-host-service
+          ServiceKeyName: cicdapp_html_repo_host-key
+          sap.cloud.service: cicdapp
+        - Authentication: OAuth2UserTokenExchange
+          Name: cicdapp_uaa_cicdapp
+          ServiceInstanceName: cicdapp-xsuaa-service
+          ServiceKeyName: uaa_cicdapp-key
+          sap.cloud.service: cicdapp
+        existing_destinations_policy: update
+  build-parameters:
+    no-source: true
+- name: cicdapp_ui_deployer
+  type: com.sap.application.content
+  path: .
+  requires:
+  - name: cicdapp_html_repo_host
+    parameters:
+      content-target: true
+  build-parameters:
+    build-result: resources
+    requires:
+    - artifacts:
+      - uiappcicd-content.zip
+      name: uiappcicd
+      target-path: resources/
+- name: uiappcicd
+  type: html5
+  path: uiappcicd
+  build-parameters:
+    builder: custom
+    commands:
+    - npm run build
+    supported-platforms: []
+resources:
+- name: cicdapp-destination-service
+  type: org.cloudfoundry.managed-service
+  parameters:
+    service: destination
+    service-name: cicdapp-destination-service
+    service-plan: lite
+- name: cicdapp_html_repo_host
+  type: org.cloudfoundry.managed-service
+  parameters:
+    service: html5-apps-repo
+    service-name: cicdapp-html5-app-host-service
+    service-plan: app-host
+- name: uaa_cicdapp
+  type: org.cloudfoundry.managed-service
+  parameters:
+    path: ./xs-security.json
+    service: xsuaa
+    service-name: cicdapp-xsuaa-service
+    service-plan: application
+build-parameters:
+  before-all:
+  - builder: custom
+    commands:
+    - npm install
